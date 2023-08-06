@@ -1,22 +1,3 @@
-// export interface UpWebhook {
-//   data: {
-//     attributes: {
-//       createdAt: string;
-//       eventType: string;
-//     };
-//     relationships: {
-//       transaction: {
-//         data: {
-//           id: string;
-//         };
-//         links: {
-//           related: string;
-//         };
-//       };
-//     };
-//   };
-// }
-
 export interface UpDataAttributesAmount {
   currencyCode: string;
   value: string;

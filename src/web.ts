@@ -3,15 +3,11 @@ import * as UpTypes from "./types.ts";
 import { addTag, getTransaction } from "./utils.ts";
 import { sendEmbedWithButtons } from "./discord.ts";
 
-const version = "0.1.0-experimental";
-
 const todoTag = "Unsorted";
 
 const UpApiKey = Deno.env.get("UPAPIKEY");
 const upWebhookId = Deno.env.get("UPWEBHOOKID");
 const mainAccount = Deno.env.get("MAINACCOUNT");
-
-console.log("Starting web server.  Version " + version);
 
 if (!UpApiKey) {
   throw new Error("UPAPIKEY environment variable not set");
@@ -21,9 +17,6 @@ if (!mainAccount) {
 }
 
 // End variables
-
-// Respond with JSON
-// return Response.json({ text: "Hello world from Deno!" }, { status: 418 });
 
 // Webhook handler
 async function webhook(req: Request, id: string): Promise<Response> {
@@ -98,19 +91,12 @@ async function processTransactionFromWebhook(webhook: UpTypes.UpRootObject) {
 
     console.log("Transaction needs to be processed");
     await addTag(transaction.data.id, todoTag);
-    // await addTag(transaction.data.id, processedTag);
+    
     sendEmbedWithButtons(transaction);
-    // sendMessage("Amount: "+ transaction.data.attributes.amount.value);
-    // sendMessage("Description: "+ transaction.data.attributes.description);
 
-
-    // console.log(transaction)
   }
   return;
 }
-
-
-
 
 export async function webHandler(req: Request): Promise<Response> {
   if (new URLPattern({ pathname: "/ping" }).test(req.url)) {

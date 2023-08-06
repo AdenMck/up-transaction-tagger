@@ -46,7 +46,6 @@ export async function removeTag(id: string, tag: string): Promise<boolean> {
   }
 }
 
-
 export async function getTransaction(
   id: string,
 ): Promise<UpTypes.UpRootObject | null> {

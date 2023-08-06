@@ -142,9 +142,7 @@ export function sendEmbedWithButtons(
     .setTitle("New transaction to categorise!")
     // .setURL("https://discord.js.org/")
     .setAuthor({
-      name: "Up Bank",
-      // iconURL: "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
-      // url: "https://discord.js.org",
+      name: "Up Transaction Tagger",
     })
     .setThumbnail(
       "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
@@ -152,25 +150,14 @@ export function sendEmbedWithButtons(
     .setDescription(transaction.data.id) //transaction ID
     .addFields(
       { name: "Description", value: transaction.data.attributes.description },
-      // { name: "\u200B", value: "\u200B" },
       {
         name: "Amount",
         value: `$${transaction.data.attributes.amount.value}`,
         inline: true,
       },
-      // { name: "Inline field title", value: "Some value here", inline: true },
     )
-    // .addFields({
-    //   name: "Inline field title",
-    //   value: "Some value here",
-    //   inline: true,
-    // })
-    // .setImage("https://i.imgur.com/AfFp7pu.png")
     .setTimestamp();
-  // .setFooter({
-  //   text: "Some footer text here",
-  //   iconURL: "https://i.imgur.com/AfFp7pu.png",
-  // });
+
   const necessary = new ButtonBuilder()
     .setCustomId(
       JSON.stringify({
