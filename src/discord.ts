@@ -111,7 +111,7 @@ async function interactionHandler(interaction: Interaction) {
       });
       const embed = interaction.message.embeds[0];
       embed.data.title = `Transaction previously tagged as ${category}`;
-      interaction.editReply({ embeds: [embed] });
+      interaction.editReply({ content: "", embeds: [embed] });
     } else {
       interaction.followUp({ content: `Tag Update Failed`, ephemeral: true });
     }
@@ -195,7 +195,7 @@ export function sendEmbedWithButtons(
     unnecessary,
     ignore,
   );
-  const message = {  content: "" , embeds: [embed], components: [row] }
+  const message = { content: "", embeds: [embed], components: [row] };
   if (pingUser) {
     message.content = `<@${pingUser}>`;
   }
