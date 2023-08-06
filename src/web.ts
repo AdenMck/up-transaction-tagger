@@ -1,9 +1,9 @@
 //TODO // read html from file to use as template BEFORE starting the deno server
-import * as UpTypes from "./up.ts";
+import * as UpTypes from "./types.ts";
 import { addTag, getTransaction } from "./utils.ts";
 import { sendEmbedWithButtons } from "./discord.ts";
 
-const version = "0.0.6-experimental";
+const version = "0.1.0-experimental";
 
 const todoTag = "Unsorted";
 

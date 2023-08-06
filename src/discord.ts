@@ -11,7 +11,7 @@ import {
   Interaction,
 } from "npm:discord.js@^14.12.1";
 
-import * as UpTypes from "./up.ts";
+import * as UpTypes from "./types.ts";
 import { addTag, removeTag } from "./utils.ts";
 
 // Log in to Discord with your client's token

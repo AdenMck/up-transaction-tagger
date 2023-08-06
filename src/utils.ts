@@ -1,4 +1,4 @@
-import * as UpTypes from "./up.ts";
+import * as UpTypes from "./types.ts";
 
 const UpApiKey = Deno.env.get("UPAPIKEY");
 
