@@ -18,6 +18,8 @@ import { addTag, removeTag } from "./utils.ts";
 const token = Deno.env.get("DISCORD_TOKEN");
 const guildId = Deno.env.get("DISCORD_GUILDID");
 const channelId = Deno.env.get("DISCORD_CHANNELID");
+const pingUser = Deno.env.get("DISCORD_PINGUSER");
+
 if (!token || !guildId || !channelId) {
   console.log("ERROR: Missing environment variables");
 }
@@ -193,7 +195,10 @@ export function sendEmbedWithButtons(
     unnecessary,
     ignore,
   );
-
-  channel.send({ embeds: [embed], components: [row] });
+  const message = {  content: "" , embeds: [embed], components: [row] }
+  if (pingUser) {
+    message.content = `<@${pingUser}>`;
+  }
+  channel.send(message);
   return true;
 }
