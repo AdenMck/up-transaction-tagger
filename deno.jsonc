@@ -1,6 +1,7 @@
 {
   "tasks": {
     "dev": "deno run --allow-all --watch src/main.ts",
+    "deleteCommands": "deno run --allow-all deleteCommands.ts",
     "deploy": "docker build -t adenmck/up-transaction-tagger . && docker push adenmck/up-transaction-tagger"
   }
 }
