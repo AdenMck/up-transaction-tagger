@@ -8,6 +8,8 @@
   },
   "npm": {
     "specifiers": {
+      "discord-api-types": "discord-api-types@0.37.51",
+      "discord-api-types@^0.22.0": "discord-api-types@0.22.0",
       "discord.js@^14.12.1": "discord.js@14.12.1"
     },
     "packages": {
@@ -99,6 +101,10 @@
         "dependencies": {
           "streamsearch": "streamsearch@1.1.0"
         }
+      },
+      "discord-api-types@0.22.0": {
+        "integrity": "sha512-l8yD/2zRbZItUQpy7ZxBJwaLX/Bs2TGaCthRppk8Sw24LOIWg12t9JEreezPoYD0SQcC2htNNo27kYEpYW/Srg==",
+        "dependencies": {}
       },
       "discord-api-types@0.37.51": {
         "integrity": "sha512-tdmdH98t3zgjQF6zwOHl0OB/PCBiE4aVsNTuN7m0PfU2jOLx3lNoU6xTeFALntUtlIxN80GTr9RPQR4t7msjSg==",

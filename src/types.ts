@@ -18,6 +18,10 @@ export interface UpDataAttributes {
   settledAt: string;
   createdAt: string;
   eventType: string;
+  displayName: string;
+  accountType: string;
+  ownershipType: string;
+  balance: UpDataAttributesAmount;
 }
 
 export interface UpRelationshipData {

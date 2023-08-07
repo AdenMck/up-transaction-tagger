@@ -64,3 +64,24 @@ export async function getTransaction(
   }
   return response.json();
 }
+
+
+export async function getBalance(
+  id: string,
+): Promise<UpTypes.UpRootObject | null> {
+  const url = `https://api.up.com.au/api/v1/accounts/${id}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${UpApiKey}`,
+    },
+  });
+  const statusCode = response.status;
+  if (statusCode !== 200) {
+    console.log("Error getting URL: " + url);
+    console.log("Status code: " + statusCode);
+    console.log("Response: " + await response.text());
+    return null;
+  }
+  return response.json();
+}
+

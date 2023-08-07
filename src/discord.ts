@@ -12,8 +12,7 @@ import {
 } from "npm:discord.js@^14.12.1";
 
 import * as UpTypes from "./types.ts";
-import { addTag, removeTag } from "./utils.ts";
-
+import { addTag, getBalance, removeTag } from "./utils.ts";
 // Log in to Discord with your client's token
 const token = Deno.env.get("DISCORD_TOKEN");
 const guildId = Deno.env.get("DISCORD_GUILDID");
@@ -42,6 +41,10 @@ async function onceReady(client: Client) {
     name: "ping",
     description: "Test the bot's responsiveness with a simple ping command",
   };
+  const balanceCommand = {
+    name: "balance",
+    description: "Retrieve current account balance",
+  };
 
   const guild = client.guilds.cache.get(guildId!);
   if (!guild) {
@@ -50,6 +53,7 @@ async function onceReady(client: Client) {
   }
 
   guild.commands.create(pingCommand);
+  guild.commands.create(balanceCommand);
 
   const channel = client.channels.cache.get(channelId!);
   if (!channel) {
@@ -123,6 +127,32 @@ async function interactionHandler(interaction: Interaction) {
 
   if (interaction.commandName === "ping") {
     await interaction.reply("Pong!");
+  }
+  if (interaction.commandName === "balance") {
+    if (interaction.user.id !== pingUser) {
+      await interaction.reply({
+        content: "You are not authorised to use this command",
+        ephemeral: true,
+      });
+      return;
+    }
+    const mainAccount = Deno.env.get("MAINACCOUNT");
+    const balance = await getBalance(mainAccount!);
+    const embed = new EmbedBuilder()
+      .setColor(0x0099FF)
+      .setTitle(`Account Balance is $${balance?.data.attributes.balance.value}`)
+      // .setURL("https://discord.js.org/")
+      .setAuthor({
+        name: "Up Transaction Tagger",
+      })
+      .setThumbnail(
+        "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
+      )
+      .setTimestamp();
+    await interaction.reply({
+      embeds: [embed],
+      ephemeral: true,
+    });
   }
 }
 
