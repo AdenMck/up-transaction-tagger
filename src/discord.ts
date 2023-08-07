@@ -101,6 +101,7 @@ async function interactionHandler(interaction: Interaction) {
     await removeTag(transactionID, "Unsorted");
     await removeTag(transactionID, "Necessary");
     await removeTag(transactionID, "Unnecessary");
+    await removeTag(transactionID, "Bills");
     await removeTag(transactionID, "Ignored");
     const didAddTag = await addTag(transactionID, category);
     console.log(didAddTag);
@@ -180,6 +181,16 @@ export function sendEmbedWithButtons(
     .setLabel("Unnecessary")
     .setStyle(ButtonStyle.Primary);
 
+  const bills = new ButtonBuilder()
+    .setCustomId(
+      JSON.stringify({
+        transactionId: transaction.data.id,
+        category: "Bills",
+      }),
+    )
+    .setLabel("Bill")
+    .setStyle(ButtonStyle.Secondary);
+
   const ignore = new ButtonBuilder()
     .setCustomId(
       JSON.stringify({
@@ -193,6 +204,7 @@ export function sendEmbedWithButtons(
   const row = new ActionRowBuilder().addComponents(
     necessary,
     unnecessary,
+    bills,
     ignore,
   );
   const message = { content: "", embeds: [embed], components: [row] };
