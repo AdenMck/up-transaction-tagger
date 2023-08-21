@@ -80,3 +80,7 @@ export interface UpData {
 export interface UpRootObject {
   data: UpData;
 }
+
+export interface UpTransactionList {
+  data: UpData[];
+}

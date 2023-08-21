@@ -9,10 +9,17 @@ import {
   Events,
   GatewayIntentBits,
   Interaction,
+  TextChannel,
 } from "npm:discord.js@^14.12.1";
 
 import * as UpTypes from "./types.ts";
-import { addTag, getBalance, removeTag } from "./utils.ts";
+import {
+  addTag,
+  getBalance,
+  getTransactions,
+  processTransaction,
+  removeTag,
+} from "./utils.ts";
 // Log in to Discord with your client's token
 const token = Deno.env.get("DISCORD_TOKEN");
 const guildId = Deno.env.get("DISCORD_GUILDID");
@@ -45,6 +52,18 @@ async function onceReady(client: Client) {
     name: "balance",
     description: "Retrieve current account balance",
   };
+  const processrecentCommand = {
+    name: "processrecent",
+    description: "Process recent transactions",
+    options: [
+      {
+        name: "number",
+        description: "The number of transactions to process",
+        type: 4,
+        required: false,
+      },
+    ],
+  };
 
   const guild = client.guilds.cache.get(guildId!);
   if (!guild) {
@@ -54,6 +73,7 @@ async function onceReady(client: Client) {
 
   guild.commands.create(pingCommand);
   guild.commands.create(balanceCommand);
+  guild.commands.create(processrecentCommand);
 
   const channel = client.channels.cache.get(channelId!);
   if (!channel) {
@@ -127,8 +147,7 @@ async function interactionHandler(interaction: Interaction) {
 
   if (interaction.commandName === "ping") {
     await interaction.reply("Pong!");
-  }
-  if (interaction.commandName === "balance") {
+  } else if (interaction.commandName === "balance") {
     if (interaction.user.id !== pingUser) {
       await interaction.reply({
         content: "You are not authorised to use this command",
@@ -153,6 +172,24 @@ async function interactionHandler(interaction: Interaction) {
       embeds: [embed],
       ephemeral: true,
     });
+  } else if (interaction.commandName === "processrecent") {
+    const number = interaction.options.get("number")?.value?.toString();
+    const transactions = await getTransactions(number);
+    if (!transactions) {
+      await interaction.reply({
+        content: "No transactions found",
+        ephemeral: true,
+      });
+      return;
+    }
+    await interaction.reply({
+      content: "Queued for processing",
+      ephemeral: true,
+    });
+    transactions.data.forEach(async (transaction) => {
+      processTransaction(transaction.id);
+    });
+    return;
   }
 }
 

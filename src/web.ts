@@ -1,9 +1,6 @@
 //TODO // read html from file to use as template BEFORE starting the deno server
 import * as UpTypes from "./types.ts";
-import { addTag, getTransaction } from "./utils.ts";
-import { sendEmbedWithButtons } from "./discord.ts";
-
-const todoTag = "Unsorted";
+import { processTransaction } from "./utils.ts";
 
 const UpApiKey = Deno.env.get("UPAPIKEY");
 const upWebhookId = Deno.env.get("UPWEBHOOKID");
@@ -51,49 +48,7 @@ async function processTransactionFromWebhook(webhook: UpTypes.UpRootObject) {
     webhook.data.attributes.eventType === "TRANSACTION_CREATED" ||
     webhook.data.attributes.eventType === "TRANSACTION_SETTLED"
   ) {
-    const transaction = await getTransaction(
-      webhook.data.relationships.transaction.data.id,
-    );
-    if (transaction === null) {
-      console.log(
-        "-=-=-=-=-=-=-=-=-=-\nTransaction not found, not processing further",
-      );
-      return;
-    }
-    console.log(
-      "-=-=-=-=-=-=-=-=-=-\nTransaction information from transaction request",
-    );
-    console.log(transaction);
-    console.log("transaction ID: " + transaction.data.id);
-    console.log("tags: ");
-    console.log(transaction.data.relationships.tags.data);
-    console.log();
-
-    // Check whether to process transaction
-    if (transaction.data.relationships.account.data.id !== mainAccount) {
-      console.log("Skipping: Transaction not involving main account");
-      return;
-    }
-    if (transaction.data.relationships.tags.data.length !== 0) {
-      console.log("Skipping: Transaction already has tags");
-      return;
-    }
-    const isSaverTransfer = transaction.data.relationships.transferAccount.data;
-    if (isSaverTransfer) {
-      console.log("Skipping: Transaction is a saver transfer");
-      return;
-    }
-    const hasMessage = !(transaction.data.attributes.message === null);
-    // if (hasMessage) {
-    //   console.log("Skipping: Transaction has a message");
-    //   return;
-    // }
-
-    console.log("Transaction needs to be processed");
-    await addTag(transaction.data.id, todoTag);
-    
-    sendEmbedWithButtons(transaction);
-
+    await processTransaction(webhook.data.relationships.transaction.data.id)
   }
   return;
 }
@@ -102,8 +57,6 @@ export async function webHandler(req: Request): Promise<Response> {
   if (new URLPattern({ pathname: "/ping" }).test(req.url)) {
     return new Response("pong", { status: 200 });
   }
-
-  // https://deno.land/api@v1.35.3?s=URLPattern
 
   // Webhook
   const matchWebhook = new URLPattern({ pathname: "/hook/:id" }).exec(req.url);
