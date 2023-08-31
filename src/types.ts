@@ -22,6 +22,7 @@ export interface UpDataAttributes {
   accountType: string;
   ownershipType: string;
   balance: UpDataAttributesAmount;
+  name: string;
 }
 
 export interface UpRelationshipData {
@@ -63,6 +64,14 @@ export interface UpDataRelationships {
     data: UpRelationshipData;
     links: UpRelationshipLinks;
   };
+  parent: {
+    data: UpRelationshipData;
+    links: UpRelationshipLinks;
+  };
+  children: {
+    data: UpRelationshipData[];
+    links: UpRelationshipLinks;
+  };
 }
 
 export interface UpDataLinks {
@@ -81,6 +90,18 @@ export interface UpRootObject {
   data: UpData;
 }
 
-export interface UpTransactionList {
+export interface UpRootObjectArray {
   data: UpData[];
+}
+
+export interface CategoryTreeEntry {
+  id: string;
+  children?: CategoryTreeEntry[]
+}
+
+export type CategoryNameMap = Map<string, string>;
+
+export interface CategoryDetails {
+  names: CategoryNameMap;
+  tree: CategoryTreeEntry[];
 }

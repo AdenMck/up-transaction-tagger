@@ -1,6 +1,6 @@
 //TODO // read html from file to use as template BEFORE starting the deno server
 import * as UpTypes from "./types.ts";
-import { processTransaction } from "./utils.ts";
+import { checkTransactionNeedsTagging } from "./utils.ts";
 
 const UpApiKey = Deno.env.get("UPAPIKEY");
 const upWebhookId = Deno.env.get("UPWEBHOOKID");
@@ -39,7 +39,7 @@ function upWebhook(body: UpTypes.UpRootObject): Response {
   console.log("Created: ", body.data.attributes.createdAt);
   console.log("Event type: ", body.data.attributes.eventType);
   console.log("Transaction ID: ", body.data.relationships.transaction.data.id);
-  processTransactionFromWebhook(body);
+  // processTransactionFromWebhook(body);
   return Response.json({ message: "Thanks :D" }, { status: 200 });
 }
 
@@ -48,7 +48,7 @@ async function processTransactionFromWebhook(webhook: UpTypes.UpRootObject) {
     webhook.data.attributes.eventType === "TRANSACTION_CREATED" ||
     webhook.data.attributes.eventType === "TRANSACTION_SETTLED"
   ) {
-    await processTransaction(webhook.data.relationships.transaction.data.id)
+    await checkTransactionNeedsTagging(webhook.data.relationships.transaction.data.id)
   }
   return;
 }

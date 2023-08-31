@@ -1,99 +1,90 @@
 import * as UpTypes from "./types.ts";
 import { sendEmbedWithButtons } from "./discord.ts";
 const UpApiKey = Deno.env.get("UPAPIKEY");
-const todoTag = "Unsorted";
+const processedTag = "Discord Message Sent";
 const mainAccount = Deno.env.get("MAINACCOUNT");
+const upBaseUrl = "https://api.up.com.au/api/v1";
 
 if (!UpApiKey || !mainAccount) {
   throw new Error("environment variable not set");
 }
 
-export async function addTag(id: string, tag: string): Promise<boolean> {
-  const url =
-    `https://api.up.com.au/api/v1/transactions/${id}/relationships/tags`;
-  const body = { data: [{ type: "tags", id: tag }] };
-  const options = {
-    method: "POST",
+async function makeAuthenticatedRequest(url: string, options: RequestInit) {
+  // add api key to header
+  console.log(`Making request to: ${url} \n with options:`);
+  console.log(options);
+  const response = await fetch(url, {
+    ...options,
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${UpApiKey}`,
+      ...options.headers,
+      Authorization: `Bearer ${UpApiKey}`,
     },
-    body: JSON.stringify(body),
-  };
-  const response = await fetch(url, options);
-  if (response.status !== 204) {
-    console.log(`Error adding tag '${tag}' to transaction '${id}'`);
-    return false;
-  } else {
-    console.log(`Added tag '${tag}' to transaction '${id}'`);
-    return true;
+  });
+  const statusCode = response.status;
+  // get the first number of the status code
+  const firstDigit = Math.floor(statusCode / 100);
+  if (firstDigit !== 2) {
+    console.log("Error handling URL: " + url);
+    console.log("Status code: " + statusCode);
+    console.log("Response: " + await response.text());
+    return null;
+  }
+  const result = await response.text();
+  try {
+    return JSON.parse(result);
+  } catch (e) {
+    return result;
   }
 }
 
+export async function addTag(id: string, tag: string): Promise<boolean> {
+  const url = `${upBaseUrl}/transactions/${id}/relationships/tags`;
+  const body = { data: [{ type: "tags", id: tag }] };
+  const options = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+  const result = await makeAuthenticatedRequest(url, options);
+  return result !== null;
+}
+
 export async function removeTag(id: string, tag: string): Promise<boolean> {
-  const url =
-    `https://api.up.com.au/api/v1/transactions/${id}/relationships/tags`;
+  const url = `${upBaseUrl}/transactions/${id}/relationships/tags`;
   const body = { data: [{ type: "tags", id: tag }] };
   const options = {
     method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${UpApiKey}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   };
-  const response = await fetch(url, options);
-  if (response.status !== 204) {
-    console.log(`Error removing tag '${tag}' from transaction '${id}'`);
-    return false;
-  } else {
-    console.log(`Removed tag '${tag}' from transaction '${id}'`);
-    return true;
-  }
+  const result = await makeAuthenticatedRequest(url, options);
+  return result !== null;
 }
 
 export async function getTransaction(
   id: string,
 ): Promise<UpTypes.UpRootObject | null> {
-  const url = `https://api.up.com.au/api/v1/transactions/${id}`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${UpApiKey}`,
-    },
-  });
-  const statusCode = response.status;
-  if (statusCode !== 200) {
-    console.log("Error getting URL: " + url);
-    console.log("Status code: " + statusCode);
-    console.log("Response: " + await response.text());
-    return null;
-  }
-  return response.json();
-}
-export async function getTransactions(
-  pageSize = "10",
-): Promise<UpTypes.UpTransactionList|null> {
-  const url =
-    `https://api.up.com.au/api/v1/transactions/?page[size]=${pageSize}`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${UpApiKey}`,
-    },
-  });
-  const statusCode = response.status;
-  if (statusCode !== 200) {
-    console.log("Error getting URL: " + url);
-    console.log("Status code: " + statusCode);
-    console.log("Response: " + await response.text());
-    return null;
-  }
-  return response.json();
+  const url = `${upBaseUrl}/transactions/${id}`;
+  return await makeAuthenticatedRequest(url, {});
 }
 
-export async function getBalance(
+export async function getTransactionList(
+  pageSize = "10",
+): Promise<UpTypes.UpRootObjectArray | null> {
+  const url =
+    `${upBaseUrl}/accounts/${mainAccount}/transactions/?page[size]=${pageSize}`;
+  return await makeAuthenticatedRequest(url, {});
+}
+
+export async function getAccountDetails(
   id: string,
 ): Promise<UpTypes.UpRootObject | null> {
-  const url = `https://api.up.com.au/api/v1/accounts/${id}`;
+  const url = `${upBaseUrl}/accounts/${id}`;
+  return await makeAuthenticatedRequest(url, {});
+}
+
+export async function getCategoriesFromUp() {
+  const url = `https://api.up.com.au/api/v1/categories`;
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${UpApiKey}`,
@@ -108,18 +99,54 @@ export async function getBalance(
   }
   return response.json();
 }
+export async function setCategory(
+  id: string,
+  category: string,
+): Promise<boolean> {
+  const url = `${upBaseUrl}/transactions/${id}/relationships/category`;
+  const body = { data: { type: "categories", id: category } };
+  const options = {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+  return await makeAuthenticatedRequest(url, options) !== null;
+}
 
-export async function processTransaction(id: string): Promise<void> {
+export async function getCategories(): Promise<UpTypes.CategoryDetails> {
+  const inputData: UpTypes.UpRootObjectArray = await getCategoriesFromUp();
+  const tree: UpTypes.CategoryTreeEntry[] = [];
+  // Create a map to store categories by ID
+  const categoriesMap = new Map<string, UpTypes.UpData>();
+  inputData.data.forEach((category) => {
+    categoriesMap.set(category.id, category);
+  });
+
+  // Iterate through each category and build the desired format
+  categoriesMap.forEach((category) => {
+    if (category.relationships.children.data.length > 0) {
+      tree.push({
+        id: category.id,
+        children: category.relationships.children.data.map((child) => ({
+          id: child.id,
+        })),
+      });
+    }
+  });
+  const names = new Map<string, string>();
+  categoriesMap.forEach((category) => {
+    names.set(category.id, category.attributes.name);
+  });
+  return { tree, names };
+}
+
+export async function checkTransactionNeedsTagging(id: string): Promise<void> {
   const transaction = await getTransaction(id);
   if (transaction === null) {
-    console.log(
-      "-=-=-=-=-=-=-=-=-=-\nTransaction not found, not processing further",
-    );
+    console.log(`Transaction ${id} not found, not processing further`);
     return;
   }
-  console.log(
-    "-=-=-=-=-=-=-=-=-=-\nTransaction information from transaction request",
-  );
+  console.log("Transaction information from transaction request");
   console.log(transaction);
   console.log("transaction ID: " + transaction.data.id);
   console.log("tags: ");
@@ -145,10 +172,17 @@ export async function processTransaction(id: string): Promise<void> {
   //   console.log("Skipping: Transaction has a message");
   //   return;
   // }
-
+  const isCategorizable = transaction.data.attributes.isCategorizable;
+  if (!isCategorizable) {
+    console.log("Skipping: Transaction is not categorizable");
+    return;
+  }
   console.log("Transaction needs to be processed");
-  await addTag(transaction.data.id, todoTag);
-
-  sendEmbedWithButtons(transaction);
+  const messageSent = await sendEmbedWithButtons(transaction);
+  console.log(messageSent)
+  if (messageSent) {
+    await addTag(transaction.data.id, processedTag);
+  }
   return;
 }
+

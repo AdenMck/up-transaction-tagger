@@ -1,9 +1,11 @@
 // deno-lint-ignore-file require-await
-// Require the necessary discord.js classes
 import {
   ActionRowBuilder,
   ButtonBuilder,
+  ButtonInteraction,
   ButtonStyle,
+  CacheType,
+  ChatInputCommandInteraction,
   Client,
   EmbedBuilder,
   Events,
@@ -11,13 +13,12 @@ import {
   Interaction,
   TextChannel,
 } from "npm:discord.js@^14.12.1";
-
 import * as UpTypes from "./types.ts";
 import {
   addTag,
-  getBalance,
-  getTransactions,
-  processTransaction,
+  checkTransactionNeedsTagging,
+  getAccountDetails,
+  getTransactionList,
   removeTag,
 } from "./utils.ts";
 // Log in to Discord with your client's token
@@ -36,14 +37,14 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.login(token);
 client.once(Events.ClientReady, onceReady);
 
-export async function discord() {
-  // Create a new client instance
-  console.log("discord");
-}
-
 async function onceReady(client: Client) {
   console.log(`Ready! Logged in as ${client.user!.tag}`);
   isConnected = true;
+  registerGuildCommands();
+  client.on("interactionCreate", interactionHandler);
+}
+
+async function registerGuildCommands() {
   const pingCommand = {
     name: "ping",
     description: "Test the bot's responsiveness with a simple ping command",
@@ -74,17 +75,7 @@ async function onceReady(client: Client) {
   guild.commands.create(pingCommand);
   guild.commands.create(balanceCommand);
   guild.commands.create(processrecentCommand);
-
-  const channel = client.channels.cache.get(channelId!);
-  if (!channel) {
-    console.log("No channel found");
-    return;
-  }
-  // channel.send("Hello!");
-
-  client.on("interactionCreate", interactionHandler);
 }
-
 async function interactionHandler(interaction: Interaction) {
   // console.log(interaction);
   if (interaction.isStringSelectMenu()) {
@@ -93,109 +84,80 @@ async function interactionHandler(interaction: Interaction) {
   }
 
   if (interaction.isButton()) {
-    await interaction.deferUpdate();
-    console.log(interaction.customId);
-    let interactionDetails;
-    try {
-      interactionDetails = await JSON.parse(interaction.customId);
-      // Your code logic using interactionDetails goes here
-    } catch (error) {
-      // Handle the error gracefully
-      console.error("Error parsing JSON:", error.message);
-      interaction.followUp({
-        content: `Tag Update Failed.  Error parsing JSON: ${error.message}`,
-        ephemeral: true,
-      });
-      interactionDetails = {};
-      return;
-    }
-    // console.log(interactionDetails)
-    if (!interactionDetails.transactionId || !interactionDetails.category) {
-      console.log("Invalid interaction details");
-      interaction.followUp({
-        content:
-          `Tag Update Failed, either transactionId or category was not set`,
-        ephemeral: true,
-      });
-      return;
-    }
-    console.log(interactionDetails);
-    const transactionID = interactionDetails.transactionId;
-    const category = interactionDetails.category;
-    await removeTag(transactionID, "Unsorted");
-    await removeTag(transactionID, "Necessary");
-    await removeTag(transactionID, "Unnecessary");
-    await removeTag(transactionID, "Bills");
-    await removeTag(transactionID, "Ignored");
-    const didAddTag = await addTag(transactionID, category);
-    console.log(didAddTag);
-    if (didAddTag) {
-      interaction.followUp({
-        content: `Tag Updated to ${category}`,
-        ephemeral: true,
-      });
-      const embed = interaction.message.embeds[0];
-      embed.data.title = `Transaction previously tagged as ${category}`;
-      interaction.editReply({ content: "", embeds: [embed] });
-    } else {
-      interaction.followUp({ content: `Tag Update Failed`, ephemeral: true });
-    }
-    return;
+    await buttonHandler(interaction);
   }
 
-  if (!interaction.isCommand()) return;
-
-  if (interaction.commandName === "ping") {
-    await interaction.reply("Pong!");
-  } else if (interaction.commandName === "balance") {
-    if (interaction.user.id !== pingUser) {
-      await interaction.reply({
-        content: "You are not authorised to use this command",
-        ephemeral: true,
-      });
-      return;
-    }
-    const mainAccount = Deno.env.get("MAINACCOUNT");
-    const balance = await getBalance(mainAccount!);
-    const embed = new EmbedBuilder()
-      .setColor(0x0099FF)
-      .setTitle(`Account Balance is $${balance?.data.attributes.balance.value}`)
-      // .setURL("https://discord.js.org/")
-      .setAuthor({
-        name: "Up Transaction Tagger",
-      })
-      .setThumbnail(
-        "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
-      )
-      .setTimestamp();
-    await interaction.reply({
-      embeds: [embed],
-      ephemeral: true,
-    });
-  } else if (interaction.commandName === "processrecent") {
-    const number = interaction.options.get("number")?.value?.toString();
-    const transactions = await getTransactions(number);
-    if (!transactions) {
-      await interaction.reply({
-        content: "No transactions found",
-        ephemeral: true,
-      });
-      return;
-    }
-    await interaction.reply({
-      content: "Queued for processing",
-      ephemeral: true,
-    });
-    transactions.data.forEach(async (transaction) => {
-      processTransaction(transaction.id);
-    });
-    return;
+  if (interaction.isChatInputCommand()) {
+    await commandHandler(interaction);
   }
 }
 
-export function sendEmbedWithButtons(
+async function buttonHandler(interaction: ButtonInteraction) {
+  // console.log(interaction);
+  await interaction.deferUpdate();
+  console.log(interaction.customId);
+  let detailsFromInteraction;
+  try {
+    detailsFromInteraction = await JSON.parse(interaction.customId);
+    // Your code logic using detailsFromInteraction goes here
+  } catch (error) {
+    // Handle the error gracefully
+    console.error("Error parsing JSON:", error.message);
+    interaction.followUp({
+      content: `Tag Update Failed.  Error parsing JSON: ${error.message}`,
+      ephemeral: true,
+    });
+    detailsFromInteraction = {};
+    return;
+  }
+  // console.log(interactionDetails)
+  if (
+    !detailsFromInteraction.transactionId || !detailsFromInteraction.category
+  ) {
+    console.log("Invalid interaction details");
+    interaction.followUp({
+      content:
+        `Tag Update Failed, either transactionId or category was not set`,
+      ephemeral: true,
+    });
+    return;
+  }
+  console.log(detailsFromInteraction);
+  const transactionID = detailsFromInteraction.transactionId;
+  const category = detailsFromInteraction.category;
+  await removeTag(transactionID, "Unsorted");
+  await removeTag(transactionID, "Necessary");
+  await removeTag(transactionID, "Unnecessary");
+  await removeTag(transactionID, "Bills");
+  await removeTag(transactionID, "Ignored");
+  const didAddTag = await addTag(transactionID, category);
+  console.log(didAddTag);
+  if (didAddTag) {
+    interaction.followUp({
+      content: `Tag Updated to ${category}`,
+      ephemeral: true,
+    });
+    const embed = interaction.message.embeds[0];
+    embed.data.title = `Transaction previously tagged as ${category}`;
+    interaction.editReply({ content: "", embeds: [embed] });
+  } else {
+    interaction.followUp({ content: `Tag Update Failed`, ephemeral: true });
+  }
+  return;
+}
+async function commandHandler(interaction: ChatInputCommandInteraction) {
+  if (interaction.commandName === "ping") {
+    await interaction.reply("Pong!");
+  } else if (interaction.commandName === "balance") {
+    handleBalanceCommand(interaction);
+  } else if (interaction.commandName === "processrecent") {
+    handleProcessRecentCommand(interaction);
+  }
+}
+
+export async function sendEmbedWithButtons(
   transaction: UpTypes.UpRootObject,
-): boolean {
+): Promise<boolean> {
   if (!isConnected) {
     console.log("Not connected");
     return false;
@@ -206,7 +168,10 @@ export function sendEmbedWithButtons(
     console.log("No channel found");
     return false;
   }
-
+  if (!(channel instanceof TextChannel)) {
+    console.log("Channel is not a text channel");
+    return false;
+  }
   const embed = new EmbedBuilder()
     .setColor(0x0099FF)
     .setTitle("New transaction to categorise!")
@@ -278,6 +243,65 @@ export function sendEmbedWithButtons(
   if (pingUser) {
     message.content = `<@${pingUser}>`;
   }
-  channel.send(message);
-  return true;
+  let returnValue = false;
+  
+  try {
+    await channel.send(message);
+    return true;
+  } catch (err) {
+    console.error(`Unable to send message: ${err}`);
+    return false;
+  }
+}
+export async function discord() {
+  // Create a new client instance
+  console.log("discord initialising");
+}
+
+async function handleBalanceCommand(interaction: ChatInputCommandInteraction) {
+  if (interaction.user.id !== pingUser) {
+    await interaction.reply({
+      content: "You are not authorised to use this command",
+      ephemeral: true,
+    });
+    return;
+  }
+  const mainAccount = Deno.env.get("MAINACCOUNT");
+  const balance = await getAccountDetails(mainAccount!);
+  const embed = new EmbedBuilder()
+    .setColor(0x0099FF)
+    .setTitle(`Account Balance is $${balance?.data.attributes.balance.value}`)
+    // .setURL("https://discord.js.org/")
+    .setAuthor({
+      name: "Up Transaction Tagger",
+    })
+    .setThumbnail(
+      "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
+    )
+    .setTimestamp();
+  await interaction.reply({
+    embeds: [embed],
+    ephemeral: true,
+  });
+}
+async function handleProcessRecentCommand(
+  interaction: ChatInputCommandInteraction,
+) {
+  const number = interaction.options.get("number")?.value?.toString();
+  const transactions = await getTransactionList(number);
+  if (!transactions) {
+    await interaction.reply({
+      content: "No transactions found",
+      ephemeral: true,
+    });
+    return;
+  }
+  await interaction.reply({
+    content: "Queued for processing",
+    ephemeral: true,
+  });
+  transactions.data.forEach(async (transaction) => {
+    checkTransactionNeedsTagging(transaction.id);
+  });
+  return;
 }
