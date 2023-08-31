@@ -97,10 +97,6 @@ async function interactionHandler(interaction: Interaction) {
 async function commandHandler(interaction: ChatInputCommandInteraction) {
   if (interaction.commandName === "ping") {
     await interaction.reply("Pong!");
-    await sendNewTransactionembed(
-      await getTransaction("9e1bab8f-9c55-423a-94f3-96e318c890fd"),
-    );
-    // await interaction.reply("Pong!");
   } else if (interaction.commandName === "balance") {
     handleBalanceCommand(interaction);
   } else if (interaction.commandName === "processrecent") {
@@ -175,7 +171,13 @@ export async function sendNewTransactionembed(
   }
 
   const embed = makeEmbed(transaction);
-  const row = makeCategoryButtonRow(transaction.data.id, true);
+  const row = makeCategoryButtonRow(
+    transaction.data.id,
+    true,
+    ButtonStyle.Primary,
+    true,
+    ButtonStyle.Secondary,
+  );
   const message = { content: "", embeds: [embed], components: [row] };
   if (pingUser) {
     message.content = `<@${pingUser}>`;
@@ -193,7 +195,9 @@ export async function sendNewTransactionembed(
 async function buttonHandler(interaction: ButtonInteraction) {
   // console.log(interaction);
   await interaction.deferUpdate();
-  console.log("Processing button interaction.  Custom ID:" + interaction.customId)
+  console.log(
+    "Processing button interaction.  Custom ID:" + interaction.customId,
+  );
   let detailsFromInteraction;
   try {
     detailsFromInteraction = await JSON.parse(interaction.customId);
@@ -250,7 +254,13 @@ async function interactionConfirmCategory(
   interaction.editReply({
     content: "",
     embeds: [embed],
-    components: [makeCategoryButtonRow(transactionId)],
+    components: [makeCategoryButtonRow(
+      transaction.data.id,
+      true,
+      ButtonStyle.Secondary,
+      false,
+      undefined,
+    )],
   });
 }
 
@@ -287,22 +297,42 @@ async function createCategoryActionRows(
     const row = new ActionRowBuilder().addComponents(menu);
     rows.push(row);
   }
+  rows.push(
+    makeCategoryButtonRow(
+      transactionId,
+      false,
+      undefined,
+      true,
+      ButtonStyle.Danger,
+      "Cancel change"
+    ),
+  );
   // console.log(rows);
   interaction.editReply({ components: rows });
 }
 
-function makeCategoryButtonRow(transactionId: string, confirmButton = false) {
-  const buttons = [
-    new ButtonBuilder()
-      .setCustomId(
-        JSON.stringify({
-          t: transactionId,
-          a: "change",
-        }),
-      )
-      .setLabel("Change Category")
-      .setStyle(ButtonStyle.Primary),
-  ];
+function makeCategoryButtonRow(
+  transactionId: string,
+  changeButton = false,
+  changeButtonStyle = ButtonStyle.Secondary,
+  confirmButton = false,
+  confirmButtonStyle = ButtonStyle.Secondary,
+  confirmButtonLabel = "Confirm Category",
+) {
+  const buttons = [];
+  if (changeButton) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(
+          JSON.stringify({
+            t: transactionId,
+            a: "change",
+          }),
+        )
+        .setLabel("Change Category")
+        .setStyle(changeButtonStyle),
+    );
+  }
   if (confirmButton) {
     buttons.push(
       new ButtonBuilder()
@@ -312,8 +342,8 @@ function makeCategoryButtonRow(transactionId: string, confirmButton = false) {
             a: "confirm",
           }),
         )
-        .setLabel("Confirm Category")
-        .setStyle(ButtonStyle.Secondary),
+        .setLabel(confirmButtonLabel)
+        .setStyle(confirmButtonStyle),
     );
   }
   const row = new ActionRowBuilder().addComponents(buttons);
@@ -343,7 +373,9 @@ async function handleStringSelectMenu(
   const transactionId = detailsFromInteraction.t;
   const category = detailsFromInteraction.c;
   if (!transactionId || !category) {
-    console.log("Invalid interaction details, either transactionId or category was not set");
+    console.log(
+      "Invalid interaction details, either transactionId or category was not set",
+    );
     interaction.followUp({
       content:
         `Category Update Failed, either transactionId or category was not set`,
