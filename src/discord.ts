@@ -404,9 +404,9 @@ const makeEmbed = (transaction: UpTypes.UpRootObject) => {
   const childCategory = names.get(childCategoryId) || "Uncategorised";
 
   const categoryString = `${
-    categoryEmoji.get(parentCategoryId)
+    categoryEmoji.get(parentCategoryId) || ""
   } ${parentCategory} > ${
-    categoryEmoji.get(childCategoryId)
+    categoryEmoji.get(childCategoryId) || ""
   } **${childCategory}**`;
   const embed = new EmbedBuilder()
     .setColor(0x0099FF)
