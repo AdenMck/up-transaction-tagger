@@ -3,7 +3,7 @@ import { webHandler } from "./web.ts";
 import { discord } from "./discord.ts";
 
 function main() {
-  const version = "0.1.7-NO-WEBHOOKS";
+  const version = "0.1.8-Now-With-Categories";
   console.log("Starting Up Transaction Tagger.  Version " + version);
 
   Deno.serve(webHandler);

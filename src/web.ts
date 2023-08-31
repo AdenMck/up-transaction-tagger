@@ -1,4 +1,3 @@
-//TODO // read html from file to use as template BEFORE starting the deno server
 import * as UpTypes from "./types.ts";
 import { checkTransactionNeedsTagging } from "./utils.ts";
 
@@ -35,11 +34,10 @@ async function webhook(req: Request, id: string): Promise<Response> {
 
 // Handle webhook requests from Up
 function upWebhook(body: UpTypes.UpRootObject): Response {
-  console.log("-=-=-=-=-=-=-=-=-=-\nWebhook received");
-  console.log("Created: ", body.data.attributes.createdAt);
-  console.log("Event type: ", body.data.attributes.eventType);
-  console.log("Transaction ID: ", body.data.relationships.transaction.data.id);
-  // processTransactionFromWebhook(body);
+  console.log("Webhook received");
+  console.log("- Event type: ", body.data.attributes.eventType);
+  console.log("- Transaction ID: ", body.data.relationships.transaction.data.id);
+  processTransactionFromWebhook(body);
   return Response.json({ message: "Thanks :D" }, { status: 200 });
 }
 
@@ -64,7 +62,6 @@ export async function webHandler(req: Request): Promise<Response> {
     const webhookIdfromUrl = matchWebhook.pathname.groups.id ?? "";
     const response = webhook(req, webhookIdfromUrl);
     return response;
-    // return new Response(null, { status: 500 });
   }
 
   return new Response(null, { status: 404 });

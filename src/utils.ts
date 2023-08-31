@@ -1,5 +1,5 @@
 import * as UpTypes from "./types.ts";
-import { sendEmbedWithButtons } from "./discord.ts";
+import { sendNewTransactionembed } from "./discord.ts";
 const UpApiKey = Deno.env.get("UPAPIKEY");
 const processedTag = "Discord Message Sent";
 const mainAccount = Deno.env.get("MAINACCOUNT");
@@ -49,18 +49,6 @@ export async function addTag(id: string, tag: string): Promise<boolean> {
   return result !== null;
 }
 
-export async function removeTag(id: string, tag: string): Promise<boolean> {
-  const url = `${upBaseUrl}/transactions/${id}/relationships/tags`;
-  const body = { data: [{ type: "tags", id: tag }] };
-  const options = {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  };
-  const result = await makeAuthenticatedRequest(url, options);
-  return result !== null;
-}
-
 export async function getTransaction(
   id: string,
 ): Promise<UpTypes.UpRootObject | null> {
@@ -83,22 +71,6 @@ export async function getAccountDetails(
   return await makeAuthenticatedRequest(url, {});
 }
 
-export async function getCategoriesFromUp() {
-  const url = `https://api.up.com.au/api/v1/categories`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${UpApiKey}`,
-    },
-  });
-  const statusCode = response.status;
-  if (statusCode !== 200) {
-    console.log("Error getting URL: " + url);
-    console.log("Status code: " + statusCode);
-    console.log("Response: " + await response.text());
-    return null;
-  }
-  return response.json();
-}
 export async function setCategory(
   id: string,
   category: string,
@@ -113,33 +85,6 @@ export async function setCategory(
   return await makeAuthenticatedRequest(url, options) !== null;
 }
 
-export async function getCategories(): Promise<UpTypes.CategoryDetails> {
-  const inputData: UpTypes.UpRootObjectArray = await getCategoriesFromUp();
-  const tree: UpTypes.CategoryTreeEntry[] = [];
-  // Create a map to store categories by ID
-  const categoriesMap = new Map<string, UpTypes.UpData>();
-  inputData.data.forEach((category) => {
-    categoriesMap.set(category.id, category);
-  });
-
-  // Iterate through each category and build the desired format
-  categoriesMap.forEach((category) => {
-    if (category.relationships.children.data.length > 0) {
-      tree.push({
-        id: category.id,
-        children: category.relationships.children.data.map((child) => ({
-          id: child.id,
-        })),
-      });
-    }
-  });
-  const names = new Map<string, string>();
-  categoriesMap.forEach((category) => {
-    names.set(category.id, category.attributes.name);
-  });
-  return { tree, names };
-}
-
 export async function checkTransactionNeedsTagging(id: string): Promise<void> {
   const transaction = await getTransaction(id);
   if (transaction === null) {
@@ -147,11 +92,10 @@ export async function checkTransactionNeedsTagging(id: string): Promise<void> {
     return;
   }
   console.log("Transaction information from transaction request");
-  console.log(transaction);
+  // console.log(transaction);
   console.log("transaction ID: " + transaction.data.id);
-  console.log("tags: ");
-  console.log(transaction.data.relationships.tags.data);
-  console.log();
+  // console.log("tags: ");
+  // console.log(transaction.data.relationships.tags.data);
 
   // Check whether to process transaction
   if (transaction.data.relationships.account.data.id !== mainAccount) {
@@ -162,27 +106,17 @@ export async function checkTransactionNeedsTagging(id: string): Promise<void> {
     console.log("Skipping: Transaction already has tags");
     return;
   }
-  const isSaverTransfer = transaction.data.relationships.transferAccount.data;
-  if (isSaverTransfer) {
-    console.log("Skipping: Transaction is a saver transfer");
-    return;
-  }
-  const hasMessage = !(transaction.data.attributes.message === null);
-  // if (hasMessage) {
-  //   console.log("Skipping: Transaction has a message");
-  //   return;
-  // }
+  
   const isCategorizable = transaction.data.attributes.isCategorizable;
   if (!isCategorizable) {
     console.log("Skipping: Transaction is not categorizable");
     return;
   }
   console.log("Transaction needs to be processed");
-  const messageSent = await sendEmbedWithButtons(transaction);
-  console.log(messageSent)
+  const messageSent = await sendNewTransactionembed(transaction);
+  console.log("Was Message sent to Discord: " + messageSent);
   if (messageSent) {
     await addTag(transaction.data.id, processedTag);
   }
   return;
 }
-
