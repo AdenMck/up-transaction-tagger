@@ -223,6 +223,22 @@ async function buttonHandler(interaction: ButtonInteraction) {
   }
 }
 
+async function interactionRemoveCategory(
+  interaction: ButtonInteraction,
+  transactionId: string,
+) {
+  const success = await setCategory(transactionId, null);
+  if (!success) {
+    interaction.followUp({
+      content: `Category Update Failed, see logs for further information`,
+      ephemeral: true,
+    });
+    return;
+  }
+  await interactionConfirmCategory(interaction, transactionId);
+  return;
+}
+
 async function handleButtonAction(
   interaction: ButtonInteraction,
   transactionId: string,
@@ -232,6 +248,8 @@ async function handleButtonAction(
     await createCategoryActionRows(interaction, transactionId);
   } else if (action === "confirm") {
     await interactionConfirmCategory(interaction, transactionId);
+  } else if (action === "remove") {
+    await interactionRemoveCategory(interaction, transactionId);
   }
 }
 
@@ -292,7 +310,7 @@ async function createCategoryActionRows(
     }
     const menu = new StringSelectMenuBuilder()
       .setCustomId(parent.id)
-      .setPlaceholder(names.get(parent.id) || "")
+      .setPlaceholder(`${categoryEmoji.get(parent.id)} ${(names.get(parent.id) || "")}`)
       .addOptions(options);
     const row = new ActionRowBuilder().addComponents(menu);
     rows.push(row);
@@ -304,7 +322,7 @@ async function createCategoryActionRows(
       undefined,
       true,
       ButtonStyle.Danger,
-      "Cancel change"
+      "Cancel change",
     ),
   );
   // console.log(rows);
@@ -344,6 +362,19 @@ function makeCategoryButtonRow(
         )
         .setLabel(confirmButtonLabel)
         .setStyle(confirmButtonStyle),
+    );
+  }
+  if (confirmButtonStyle === ButtonStyle.Danger) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(
+          JSON.stringify({
+            t: transactionId,
+            a: "remove",
+          }),
+        )
+        .setLabel("Remove Category")
+        .setStyle(ButtonStyle.Secondary),
     );
   }
   const row = new ActionRowBuilder().addComponents(buttons);

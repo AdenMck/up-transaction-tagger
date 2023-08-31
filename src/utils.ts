@@ -73,10 +73,10 @@ export async function getAccountDetails(
 
 export async function setCategory(
   id: string,
-  category: string,
+  category: string | null,
 ): Promise<boolean> {
   const url = `${upBaseUrl}/transactions/${id}/relationships/category`;
-  const body = { data: { type: "categories", id: category } };
+  const body = { data: category?{ type: "categories", id: category }:null };
   const options = {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
