@@ -76,7 +76,7 @@ export async function setCategory(
   category: string | null,
 ): Promise<boolean> {
   const url = `${upBaseUrl}/transactions/${id}/relationships/category`;
-  const body = { data: category?{ type: "categories", id: category }:null };
+  const body = { data: category ? { type: "categories", id: category } : null };
   const options = {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -98,15 +98,15 @@ export async function checkTransactionNeedsTagging(id: string): Promise<void> {
   // console.log(transaction.data.relationships.tags.data);
 
   // Check whether to process transaction
-  if (transaction.data.relationships.account.data.id !== mainAccount) {
-    console.log("Skipping: Transaction not involving main account");
-    return;
-  }
-  if (transaction.data.relationships.tags.data.length !== 0) {
-    console.log("Skipping: Transaction already has tags");
-    return;
-  }
-  
+  // if (transaction.data.relationships.account.data.id !== mainAccount) {
+  //   console.log("Skipping: Transaction not involving main account");
+  //   return;
+  // }
+  // if (transaction.data.relationships.tags.data.length !== 0) {
+  //   console.log("Skipping: Transaction already has tags");
+  //   return;
+  // }
+
   const isCategorizable = transaction.data.attributes.isCategorizable;
   if (!isCategorizable) {
     console.log("Skipping: Transaction is not categorizable");
