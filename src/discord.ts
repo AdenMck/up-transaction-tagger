@@ -49,10 +49,10 @@ async function onceReady(client: Client) {
 }
 
 async function registerGuildCommands() {
-  const pingCommand = {
-    name: "ping",
-    description: "Test the bot's responsiveness with a simple ping command",
-  };
+  // const pingCommand = {
+  //   name: "ping",
+  //   description: "Test the bot's responsiveness with a simple ping command",
+  // };
   const balanceCommand = {
     name: "balance",
     description: "Retrieve current account balance",
@@ -69,16 +69,41 @@ async function registerGuildCommands() {
       },
     ],
   };
-
+  const recent = {
+    name: "recent",
+    description: "View details about a number of recent transactions",
+    options: [
+      {
+        name: "number",
+        description: "The number of transactions to show",
+        type: 4,
+        required: true,
+      },
+    ],
+  };
+  const category = {
+    name: "category",
+    description: "Change the category of a transaction",
+    options: [
+      {
+        type: 3,
+        name: "transactionid",
+        description: "The ID of the transaction",
+        required: true,
+      },
+    ],
+  };
   const guild = client.guilds.cache.get(guildId!);
   if (!guild) {
     console.log("No guild found");
     return;
   }
 
-  guild.commands.create(pingCommand);
+  // guild.commands.create(pingCommand);
   guild.commands.create(balanceCommand);
   guild.commands.create(processrecentCommand);
+  guild.commands.create(recent);
+  guild.commands.create(category);
 }
 async function interactionHandler(interaction: Interaction) {
   // console.log(interaction);
@@ -101,6 +126,10 @@ async function commandHandler(interaction: ChatInputCommandInteraction) {
     handleBalanceCommand(interaction);
   } else if (interaction.commandName === "processrecent") {
     handleProcessRecentCommand(interaction);
+  } else if (interaction.commandName === "recent") {
+    handleRecentCommand(interaction);
+  } else if (interaction.commandName === "category") {
+    handleCategoryCommand(interaction);
   }
 }
 
@@ -151,9 +180,59 @@ async function handleProcessRecentCommand(
   });
   return;
 }
+async function handleRecentCommand(
+  interaction: ChatInputCommandInteraction,
+) {
+  await interaction.deferReply();
+  const number = interaction.options.get("number")?.value?.toString();
+  const transactions = await getTransactionList(number);
+  if (!transactions) {
+    await interaction.editReply({ content: "No transactions found" });
+    return;
+  }
+  await interaction.editReply({
+    content: `Displaying ${number} most recent transactions`,
+  });
+  transactions.data.forEach(async (transaction) => {
+    // checkTransactionNeedsTagging(transaction.id);
+    const newtransaction: UpTypes.UpRootObject = {
+      data: transaction,
+    };
+    sendNewTransactionembed(newtransaction, false);
+  });
+  return;
+}
+async function handleCategoryCommand(
+  interaction: ChatInputCommandInteraction,
+) {
+  await interaction.deferReply();
+  const transactionId = interaction.options.get("transactionid")?.value
+    ?.toString();
+  const transaction = await getTransaction(transactionId!);
+
+  if (!transaction) {
+    await interaction.editReply({ content: "Transaction not found" });
+    return;
+  }
+  const embed = makeEmbed(transaction, true);
+  const row = makeCategoryButtonRow(
+    transaction.data.id,
+    true,
+    ButtonStyle.Primary,
+    true,
+    ButtonStyle.Secondary,
+  );
+  await interaction.editReply({
+    content: "",
+    embeds: [embed],
+    components: [row],
+  });
+  return;
+}
 
 export async function sendNewTransactionembed(
   transaction: UpTypes.UpRootObject,
+  categoryOptions = true,
 ) {
   if (!isConnected) {
     console.log("Not connected");
@@ -170,20 +249,23 @@ export async function sendNewTransactionembed(
     return false;
   }
 
-  const embed = makeEmbed(transaction);
-  const row = makeCategoryButtonRow(
-    transaction.data.id,
-    true,
-    ButtonStyle.Primary,
-    true,
-    ButtonStyle.Secondary,
-  );
-  const message = { content: "", embeds: [embed], components: [row] };
-  if (pingUser) {
+  const embed = makeEmbed(transaction, categoryOptions);
+  let message;
+  if (categoryOptions) {
+    const row = makeCategoryButtonRow(
+      transaction.data.id,
+      true,
+      ButtonStyle.Primary,
+      true,
+      ButtonStyle.Secondary,
+    );
+    message = { content: "", embeds: [embed], components: [row] };
+  } else {
+    message = { content: "", embeds: [embed] };
+  }
+  if (pingUser && categoryOptions) {
     message.content = `<@${pingUser}>`;
   }
-  let returnValue = false;
-
   try {
     await channel.send(message);
     return true;
@@ -267,8 +349,8 @@ async function interactionConfirmCategory(
     return;
   }
 
-  const embed = await makeEmbed(transaction);
-  embed.data.title = `Categorisation confirmed`;
+  const embed = await makeEmbed(transaction, false);
+  // embed.data.title = `Categorisation confirmed`;
   interaction.editReply({
     content: "",
     embeds: [embed],
@@ -310,7 +392,9 @@ async function createCategoryActionRows(
     }
     const menu = new StringSelectMenuBuilder()
       .setCustomId(parent.id)
-      .setPlaceholder(`${categoryEmoji.get(parent.id)} ${(names.get(parent.id) || "")}`)
+      .setPlaceholder(
+        `${categoryEmoji.get(parent.id)} ${(names.get(parent.id) || "")}`,
+      )
       .addOptions(options);
     const row = new ActionRowBuilder().addComponents(menu);
     rows.push(row);
@@ -426,7 +510,10 @@ async function handleStringSelectMenu(
   return;
 }
 
-const makeEmbed = (transaction: UpTypes.UpRootObject) => {
+const makeEmbed = (
+  transaction: UpTypes.UpRootObject,
+  categoryOptions = true,
+) => {
   const { names } = categories;
   const parentCategoryId = transaction.data.relationships.parentCategory.data
     ?.id;
@@ -439,33 +526,70 @@ const makeEmbed = (transaction: UpTypes.UpRootObject) => {
   } ${parentCategory} > ${
     categoryEmoji.get(childCategoryId) || ""
   } **${childCategory}**`;
+  const value = Number(transaction.data.attributes.amount.value);
   const embed = new EmbedBuilder()
-    .setColor(0x0099FF)
-    .setTitle("New transaction available for categorisation!")
+    .setColor(0x0099FF);
+  embed.setTitle(
+    `${(value > 0) ? "Deposit" : "Purchase"}${
+      categoryOptions ? " - Select Category" : ""
+    }`,
+  )
     // .setURL("https://discord.js.org/")
-    .setAuthor({
-      name: "Up Transaction Tagger",
-    })
+    // .setAuthor({
+    //   name: "Up Transaction Tagger",
+    // })
     .setThumbnail(
       "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
     )
-    .setDescription(transaction.data.id) //transaction ID
     .addFields(
       {
         name: "Category",
         value: categoryString,
       },
+    );
+  if (transaction.data.attributes.description) {
+    embed.addFields(
       {
         name: "Description",
         value: transaction.data.attributes.description,
         inline: true,
       },
+    );
+  }
+  if (transaction.data.attributes.rawText) {
+    embed.addFields(
       {
-        name: "Amount",
-        value: `$${transaction.data.attributes.amount.value}`,
+        name: "Raw Text",
+        value: transaction.data.attributes.rawText,
         inline: true,
       },
-    )
+    );
+  }
+  if (transaction.data.attributes.message) {
+    embed.addFields(
+      {
+        name: "Message",
+        value: transaction.data.attributes.message,
+        inline: true,
+      },
+    );
+  }
+  // embed.addFields(
+  //   { name: " ", value: " " },
+  // )
+  embed.addFields({
+    name: "Amount",
+    value: `**${(value > 0) ? "+" : "-"}** $${Math.abs(value)}`,
+    inline: true,
+  });
+  // embed.addFields({
+  //   name: "Amount",
+  //   value: `$${transaction.data.attributes.amount.value}`,
+  //   inline: true,
+  // });
+  embed.setFooter(
+    { text: transaction.data.id },
+  )
     .setTimestamp(
       new Date(
         transaction.data.attributes.createdAt ??

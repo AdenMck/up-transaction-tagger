@@ -91,6 +91,7 @@ export async function checkTransactionNeedsTagging(id: string): Promise<void> {
     console.log(`Transaction ${id} not found, not processing further`);
     return;
   }
+  // console.log(transaction);
   console.log("Transaction information from transaction request");
   // console.log(transaction);
   console.log("transaction ID: " + transaction.data.id);
@@ -112,7 +113,7 @@ export async function checkTransactionNeedsTagging(id: string): Promise<void> {
     return;
   }
   console.log("Transaction needs to be processed");
-  const messageSent = await sendNewTransactionembed(transaction);
+  const messageSent = await sendNewTransactionembed(transaction, true);
   console.log("Was Message sent to Discord: " + messageSent);
   if (messageSent) {
     await addTag(transaction.data.id, processedTag);
