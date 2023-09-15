@@ -540,13 +540,15 @@ const makeEmbed = (
     // })
     .setThumbnail(
       "https://up.com.au/static/6cc06998a880f98acb5a57f45c7114e0/up-logo-transparent.png",
-    )
-    .addFields(
+    );
+  if (transaction.data.attributes.isCategorizable) {
+    embed.addFields(
       {
         name: "Category",
         value: categoryString,
       },
     );
+  }
   if (transaction.data.attributes.description) {
     embed.addFields(
       {
