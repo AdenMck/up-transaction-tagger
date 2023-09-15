@@ -102,11 +102,10 @@ export async function checkTransactionNeedsTagging(id: string): Promise<void> {
   //   console.log("Skipping: Transaction not involving main account");
   //   return;
   // }
-  // if (transaction.data.relationships.tags.data.length !== 0) {
-  //   console.log("Skipping: Transaction already has tags");
-  //   return;
-  // }
-
+  if (transaction.data.relationships.tags.data.length !== 0) {
+    console.log("Skipping: Transaction already has tags");
+    return;
+  }
   const isCategorizable = transaction.data.attributes.isCategorizable;
   if (!isCategorizable) {
     console.log("Skipping: Transaction is not categorizable");
