@@ -345,6 +345,7 @@ async function interactionConfirmCategory(
     interaction.editReply({
       content: `Transaction ${transactionId} not found`,
       embeds: [],
+      components: [],
     });
     return;
   }
@@ -413,6 +414,27 @@ async function createCategoryActionRows(
   interaction.editReply({ components: rows });
 }
 
+function addButton(
+  buttonsArray: ButtonBuilder[],
+  label: string,
+  style: ButtonStyle,
+  t: string,
+  a: string,
+) {
+  buttonsArray.push(
+    new ButtonBuilder()
+      .setCustomId(
+        JSON.stringify({
+          t: t,
+          a: a,
+        }),
+      )
+      .setLabel(label)
+      .setStyle(style),
+  );
+  return buttonsArray;
+}
+
 function makeCategoryButtonRow(
   transactionId: string,
   changeButton = false,
@@ -421,46 +443,34 @@ function makeCategoryButtonRow(
   confirmButtonStyle = ButtonStyle.Secondary,
   confirmButtonLabel = "Confirm Category",
 ) {
-  const buttons = [];
-  if (changeButton) {
-    buttons.push(
-      new ButtonBuilder()
-        .setCustomId(
-          JSON.stringify({
-            t: transactionId,
-            a: "change",
-          }),
-        )
-        .setLabel("Change Category")
-        .setStyle(changeButtonStyle),
+  const buttons: ButtonBuilder[] = [];
+  changeButton &&
+    addButton(
+      buttons,
+      "Change Category",
+      changeButtonStyle,
+      transactionId,
+      "change",
     );
-  }
-  if (confirmButton) {
-    buttons.push(
-      new ButtonBuilder()
-        .setCustomId(
-          JSON.stringify({
-            t: transactionId,
-            a: "confirm",
-          }),
-        )
-        .setLabel(confirmButtonLabel)
-        .setStyle(confirmButtonStyle),
+
+  confirmButton &&
+    addButton(
+      buttons,
+      confirmButtonLabel,
+      confirmButtonStyle,
+      transactionId,
+      "confirm",
     );
-  }
-  if (confirmButtonStyle === ButtonStyle.Danger) {
-    buttons.push(
-      new ButtonBuilder()
-        .setCustomId(
-          JSON.stringify({
-            t: transactionId,
-            a: "remove",
-          }),
-        )
-        .setLabel("Remove Category")
-        .setStyle(ButtonStyle.Secondary),
+
+  (confirmButtonStyle === ButtonStyle.Danger) &&
+    addButton(
+      buttons,
+      "Remove Category",
+      ButtonStyle.Secondary,
+      transactionId,
+      "remove",
     );
-  }
+
   const row = new ActionRowBuilder().addComponents(buttons);
   return row;
 }
