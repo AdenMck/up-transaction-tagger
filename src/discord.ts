@@ -108,6 +108,15 @@ async function registerGuildCommands() {
 async function interactionHandler(interaction: Interaction) {
 
   // console.log(interaction);
+  if (interaction.user.id !== pingUser) {
+    // await interaction.reply({
+    //   content: "You are not authorised to use this command",
+    //   ephemeral: true,
+    // });
+    console.log(interaction)
+    console.log("Request from unauthorised user: " + interaction.user.id)
+    return;
+  }
   if (interaction.isStringSelectMenu()) {
     await handleStringSelectMenu(interaction);
   }
@@ -117,13 +126,6 @@ async function interactionHandler(interaction: Interaction) {
   }
 
   if (interaction.isChatInputCommand()) {
-    if (interaction.user.id !== pingUser) {
-      await interaction.reply({
-        content: "You are not authorised to use this command",
-        ephemeral: true,
-      });
-      return;
-    }
     await commandHandler(interaction);
   }
 }
