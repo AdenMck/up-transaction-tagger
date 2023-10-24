@@ -106,6 +106,7 @@ async function registerGuildCommands() {
   guild.commands.create(category);
 }
 async function interactionHandler(interaction: Interaction) {
+
   // console.log(interaction);
   if (interaction.isStringSelectMenu()) {
     await handleStringSelectMenu(interaction);
@@ -116,6 +117,13 @@ async function interactionHandler(interaction: Interaction) {
   }
 
   if (interaction.isChatInputCommand()) {
+    if (interaction.user.id !== pingUser) {
+      await interaction.reply({
+        content: "You are not authorised to use this command",
+        ephemeral: true,
+      });
+      return;
+    }
     await commandHandler(interaction);
   }
 }
@@ -139,13 +147,6 @@ export async function discord() {
 }
 
 async function handleBalanceCommand(interaction: ChatInputCommandInteraction) {
-  if (interaction.user.id !== pingUser) {
-    await interaction.reply({
-      content: "You are not authorised to use this command",
-      ephemeral: true,
-    });
-    return;
-  }
   const mainAccount = Deno.env.get("MAINACCOUNT");
   const balance = await getAccountDetails(mainAccount!);
   const embed = new EmbedBuilder()
