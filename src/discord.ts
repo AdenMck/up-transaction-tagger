@@ -114,7 +114,7 @@ async function interactionHandler(interaction: Interaction) {
     //   ephemeral: true,
     // });
     console.log(interaction)
-    console.log("Request from unauthorised user: " + interaction.user.id)
+    console.log("Ignoring request from unauthorised user: " + interaction.user.id)
     return;
   }
   if (interaction.isStringSelectMenu()) {
@@ -172,6 +172,13 @@ async function handleProcessRecentCommand(
 ) {
   await interaction.deferReply({ ephemeral: true });
   const number = interaction.options.get("number")?.value?.toString();
+  if (number < 1 || number > 100) {
+    await interaction.editReply({
+      content: "Number must be between 1 and 100",
+      ephemeral: true,
+    });
+    return;
+  }
   const transactions = await getTransactionList(number);
   if (!transactions) {
     await interaction.editReply({ content: "No transactions found" });
@@ -188,6 +195,13 @@ async function handleRecentCommand(
 ) {
   await interaction.deferReply();
   const number = interaction.options.get("number")?.value?.toString();
+  if (number < 1 || number > 100) {
+    await interaction.editReply({
+      content: "Number must be between 1 and 100",
+      ephemeral: true,
+    });
+    return;
+  }
   const transactions = await getTransactionList(number);
   if (!transactions) {
     await interaction.editReply({ content: "No transactions found" });
